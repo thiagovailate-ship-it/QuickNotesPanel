@@ -4,23 +4,42 @@ set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$ROOT"
 
+echo "Diretório do projeto: $ROOT"
+echo "Arquivos disponíveis:"
+ls -la
+
+if [ ! -f "$ROOT/Makefile" ]; then
+  echo "ERRO: Makefile não encontrado na raiz do projeto."
+  echo "Envie o arquivo Makefile para a raiz do repositório."
+  exit 1
+fi
+
 if [ -z "${THEOS:-}" ] || [ ! -f "$THEOS/makefiles/common.mk" ]; then
-  echo "Erro: THEOS não aponta para uma instalação válida do Theos." >&2
-  echo "Configure o Theos, o SDK iOS e o toolchain antes de compilar." >&2
+  echo "ERRO: instalação do Theos não encontrada."
   exit 1
 fi
 
-make clean
-make
+make -f "$ROOT/Makefile" clean || true
+make -f "$ROOT/Makefile"
 
-mkdir -p dist
-BUILT="$(find .theos -type f -name 'QuickNotesPanel.dylib' -print -quit 2>/dev/null || true)"
+mkdir -p "$ROOT/dist"
+
+BUILT="$(find "$ROOT/.theos" -type f \
+  -name 'QuickNotesPanel.dylib' -print -quit 2>/dev/null || true)"
+
 if [ -z "$BUILT" ]; then
-  BUILT="$(find . -type f -name 'QuickNotesPanel.dylib' -not -path './dist/*' -print -quit)"
+  BUILT="$(find "$ROOT" -type f \
+    -name 'QuickNotesPanel.dylib' \
+    -not -path "$ROOT/dist/*" \
+    -print -quit)"
 fi
+
 if [ -z "$BUILT" ] || [ ! -f "$BUILT" ]; then
-  echo "Erro: o Theos terminou sem produzir QuickNotesPanel.dylib." >&2
+  echo "ERRO: a compilação não produziu a dylib."
   exit 1
 fi
-cp "$BUILT" dist/QuickNotesPanel.dylib
-echo "Dylib criada em: $ROOT/dist/QuickNotesPanel.dylib"
+
+cp "$BUILT" "$ROOT/dist/QuickNotesPanel.dylib"
+file "$ROOT/dist/QuickNotesPanel.dylib"
+
+echo "Compilação concluída."
